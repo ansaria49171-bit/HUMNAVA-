@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>HUMNAVA AI — Your Emotional AI Companion</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="page">
+
+    <!-- SIDEBAR / PROFILE -->
+    <aside class="sidebar" id="sidebar">
+      <div class="side-top">
+        <img src="logo.jpg" alt="Humnava" class="side-logo" />
+        <div class="side-title">Humnava AI</div>
+      </div>
+
+      <div class="side-section">
+        <div class="side-label">Profile</div>
+        <input id="profileName" placeholder="Your name (optional)" />
+        <button id="saveProfile" class="side-btn">Save</button>
+      </div>
+
+      <div class="side-section">
+        <div class="side-label">Theme</div>
+        <div class="side-row">
+          <button class="side-btn small" data-theme="dark">Dark</button>
+          <button class="side-btn small" data-theme="light">Light</button>
+          <button class="side-btn small" data-theme="purple">Purple</button>
+        </div>
+      </div>
+
+      <div class="side-section">
+        <div class="side-label">Diary</div>
+        <button id="openDiary" class="side-btn">Open Diary</button>
+      </div>
+
+      <div class="side-section small-note">
+        <div style="font-weight:700">Memory</div>
+        <div id="memoryPreview" class="memory-preview">No saved memory yet.</div>
+        <div style="margin-top:8px">
+          <button id="clearAllMemory" class="side-btn danger">Clear Memory</button>
+        </div>
+      </div>
+
+      <div class="side-bottom">
+        <small>v2 • Level-2 features</small>
+      </div>
+    </aside>
+
+    <!-- MAIN AREA -->
+    <main class="main">
+      <header class="topbar">
+        <div class="brand">
+          <img src="logo.jpg" alt="Humnava Logo" class="logo" />
+          <div class="brand-text">
+            <h1>HUMNAVA AI</h1>
+            <p class="tag">AI that listens from the heart</p>
+          </div>
+        </div>
+
+        <div class="header-controls">
+          <div id="openSidebar" class="icon-btn">☰</div>
+          <div id="themeToggle" class="icon-btn" title="Toggle theme">🌗</div>
+          <div id="status" class="status-pill">Live</div>
+        </div>
+      </header>
+
+      <!-- HERO / AVATAR -->
+      <section class="hero">
+        <div id="avatar" class="avatar-box avatar-idle" aria-hidden="true">
+          <img id="avatarImg" src="avatar1.jpg" alt="Humnava Avatar" />
+          <div id="avatarMouth" class="avatar-mouth"></div>
+        </div>
+
+        <div class="skin-row">
+          <button class="skin-btn" data-skin="avatar1.jpg">Skin 1</button>
+          <button class="skin-btn" data-skin="avatar2.jpg">Skin 2</button>
+          <button class="skin-btn" data-skin="avatar3.jpg">Skin 3</button>
+        </div>
+
+        <!-- dynamic mood tag -->
+        <div id="moodTag" class="mood-tag">Feeling: Neutral</div>
+
+        <div class="quick-suggestions" id="suggestions">
+          <!-- dynamic suggestions populated by JS -->
+        </div>
+      </section>
+
+      <!-- CHAT -->
+      <section class="chat-area">
+        <div id="chatBox" class="chat-box" aria-live="polite"></div>
+
+        <form id="chatForm" class="chat-form" autocomplete="off">
+          <button type="button" id="micBtn" class="mic-btn" title="Speak">🎤</button>
+          <input id="input" type="text" placeholder="Speak or type a message..." />
+          <button type="submit" id="sendBtn" class="send-btn">Send</button>
+        </form>
+      </section>
+
+      <footer class="foot">
+        <small>© 2025 HUMNAVA AI • Built with ♥ by Ansari Abdulla</small>
+      </footer>
+    </main>
+
+    <!-- DIARY MODAL -->
+    <div id="diaryModal" class="modal hidden">
+      <div class="modal-card">
+        <h3>Personal Diary</h3>
+        <textarea id="diaryText" rows="8" placeholder="Write your feelings..."></textarea>
+        <div class="row" style="gap:8px">
+          <select id="diaryMood">
+            <option value="neutral">Neutral</option>
+            <option value="happy">Happy</option>
+            <option value="sad">Sad</option>
+            <option value="angry">Angry</option>
+            <option value="anxious">Anxious</option>
+          </select>
+          <button id="saveDiary" class="side-btn">Save</button>
+          <button id="closeDiary" class="side-btn light">Close</button>
+        </div>
+        <div id="diaryList" class="diary-list"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+  /***************************************************************************
+   * Humnava v2 — Pack 1 additions integrated
+   * Added: mood engine, enhanceReply, typingDelay, improved speakText (soft),
+   * and integrated natural delay into sendMessage flow.
+   * Comments in Hindi for samajh.
+   ***************************************************************************/
+
+  // CONFIG
+  const PROXY_URL = "https://humnava-backend-19jj-git-main-abdulla-ansari-s-projects.vercel.app";
+  const CHAT_ENDPOINT = PROXY_URL + "/chat";
+
+  // DOM
+  const chatBox = document.getElementById("chatBox");
+  const form = document.getElementById("chatForm");
+  const input = document.getElementById("input");
+  const sendBtn = document.getElementById("sendBtn");
+  const statusEl = document.getElementById("status");
+  const micBtn = document.getElementById("micBtn");
+  const avatar = document.getElementById("avatar");
+  const avatarImg = document.getElementById("avatarImg");
+  const avatarMouth = document.getElementById("avatarMouth");
+  const suggestionsEl = document.getElementById("suggestions");
+  const moodTag = document.getElementById("moodTag");
+
+  // Sidebar & diary DOM
+  const sidebar = document.getElementById("sidebar");
+  const openSidebar = document.getElementById("openSidebar");
+  const themeToggle = document.getElementById("themeToggle");
+  const profileName = document.getElementById("profileName");
+  const saveProfile = document.getElementById("saveProfile");
+  const memoryPreview = document.getElementById("memoryPreview");
+  const clearAllMemory = document.getElementById("clearAllMemory");
+  const diaryModal = document.getElementById("diaryModal");
+  const openDiary = document.getElementById("openDiary");
+  const closeDiary = document.getElementById("closeDiary");
+  const diaryText = document.getElementById("diaryText");
+  const saveDiary = document.getElementById("saveDiary");
+  const diaryList = document.getElementById("diaryList");
+  const diaryMood = document.getElementById("diaryMood");
+
+  // Utility
+  function escapeHtml(s){ return (s+"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;"); }
+
+  // LOCAL STORAGE KE KEYS
+  const KEY_MEM = "humnava_mem_v2";
+  const KEY_PROFILE = "humnava_profile_v2";
+  const KEY_CONVO = "humnava_convo_v2";
+  const KEY_DIARY = "humnava_diary_v2";
+
+  // load local data
+  let memory = JSON.parse(localStorage.getItem(KEY_MEM) || "[]");
+  let profile = JSON.parse(localStorage.getItem(KEY_PROFILE) || "{}");
+  let convo = JSON.parse(localStorage.getItem(KEY_CONVO) || "[]");
+  let diary = JSON.parse(localStorage.getItem(KEY_DIARY) || "[]");
+
+  function refreshMemoryPreview(){
+    if(memory.length===0) memoryPreview.textContent = "No saved memory yet.";
+    else memoryPreview.textContent = memory.slice(-3).join(" · ");
+  }
+  refreshMemoryPreview();
+  if(profile.name) profileName.value = profile.name;
+
+  // --- MOOD ENGINE (Pack 1) ---
+  let humnavaMood = "neutral"; // neutral | happy | sad | caring | romantic | angry | anxious
+
+  function updateMood(userMsg){
+    const m = userMsg.toLowerCase();
+    if(m.match(/(sad|depress|lonely|bore|dukhi|udhasi|tut|hurt)/)) humnavaMood = "caring";
+    else if(m.match(/(love|miss you|miss|❤️|i love)/)) humnavaMood = "romantic";
+    else if(m.match(/(happy|glad|awesome|khushi|accha|nice|badiya)/)) humnavaMood = "happy";
+    else if(m.match(/(angry|gussa|furious|roshan)/)) humnavaMood = "angry";
+    else if(m.match(/(anxious|worried|tension|stress|pareshan)/)) humnavaMood = "anxious";
+    else humnavaMood = "neutral";
+  }
+
+  // enhance reply based on mood (adds emoji/prefix)
+  function enhanceReply(reply){
+    switch(humnavaMood){
+      case "caring": return "💛 " + reply;
+      case "romantic": return "💕 " + reply;
+      case "happy": return "😊 " + reply;
+      case "angry": return "💜 " + reply;
+      case "anxious": return "🫂 " + reply;
+      default: return reply;
+    }
+  }
+
+  // typing delay (human-like)
+  function typingDelay(text){
+    const len = Math.max(8, (text||"").length);
+    if(humnavaMood === "romantic") return 80 + len * 6;
+    if(humnavaMood === "caring") return 60 + len * 4;
+    if(humnavaMood === "happy") return 30 + len * 2;
+    if(humnavaMood === "angry") return 40 + len * 3;
+    if(humnavaMood === "anxious") return 70 + len * 4;
+    return 50 + len * 2;
+  }
+
+  // avatar helpers (mouth)
+  function mouthOn(){ avatarMouth.style.transform = "translateX(-50%) scaleY(0.55)"; }
+  function mouthOff(){ avatarMouth.style.transform = "translateX(-50%) scaleY(1)"; }
+
+  // avatar states
+  function avatarIdle(){ avatar.classList.remove("avatar-thinking","avatar-speaking","avatar-sad","avatar-happy"); avatar.classList.add("avatar-idle"); }
+  function avatarThinking(){ avatar.classList.remove("avatar-idle","avatar-speaking"); avatar.classList.add("avatar-thinking"); }
+  function avatarSpeaking(){ avatar.classList.remove("avatar-idle","avatar-thinking"); avatar.classList.add("avatar-speaking"); }
+  function avatarSad(){ avatar.classList.add("avatar-sad"); }
+  function avatarHappy(){ avatar.classList.add("avatar-happy"); }
+
+  // speakText replaced: mood-based rate & pitch, mouth sync
+  function speakText(text){
+    if(!('speechSynthesis' in window)) return;
+    const hasHindi = /[\u0900-\u097F]/.test(text);
+    const ut = new SpeechSynthesisUtterance(text);
+    ut.lang = hasHindi ? "hi-IN" : "en-US";
+
+    ut.rate = (humnavaMood === "romantic") ? 0.85 :
+              (humnavaMood === "caring")   ? 0.92 :
+              (humnavaMood === "happy")    ? 1.05 :
+              (humnavaMood === "angry")    ? 0.95 :
+              (humnavaMood === "anxious")  ? 0.9 : 1;
+
+    ut.pitch = (humnavaMood === "romantic") ? 1.22 :
+               (humnavaMood === "caring") ? 1.12 : 1;
+
+    // start speaking
+    ut.onstart = () => { avatarSpeaking(); mouthOn(); avatar.classList.add('speaking-active'); };
+    ut.onend = () => { mouthOff(); avatarIdle(); avatar.classList.remove('speaking-active'); };
+
+    speechSynthesis.cancel();
+    try { speechSynthesis.speak(ut); } catch(e){ avatarIdle(); }
+  }
+
+  // small helper to add bubble
+  function addBubble(kind, html){
+    const el = document.createElement("div");
+    el.className = "bubble " + kind + " enter";
+    el.innerHTML = html;
+    chatBox.appendChild(el);
+    requestAnimationFrame(()=> el.classList.remove("enter"));
+    chatBox.scrollTo({ top: chatBox.scrollHeight + 200, behavior: "smooth" });
+    return el;
+  }
+
+  function saveConvo(){ localStorage.setItem(KEY_CONVO, JSON.stringify(convo)); }
+
+  // mood-based suggestion map
+  const suggestionMap = {
+    neutral: ["Tell me a joke","How are you?","Motivation please"],
+    caring: ["Talk about feelings","Share a memory","Sing a short song"],
+    happy: ["Share a celebration","Tell me a joke","Play a mini-game"],
+    angry: ["Breathing exercise","Calm me down","Take a break"],
+    anxious: ["Guided breathing","Tell me a reassurance","What's one small win?"]
+  };
+
+  function updateSuggestions(mood){
+    suggestionsEl.innerHTML = "";
+    const arr = suggestionMap[mood] || suggestionMap["neutral"];
+    arr.forEach(s=>{
+      const b = document.createElement("button"); b.className = "chip"; b.textContent = s;
+      suggestionsEl.appendChild(b);
+    });
+    moodTag.textContent = "Feeling: " + (mood[0].toUpperCase() + mood.slice(1));
+  }
+
+  // generate local empathetic reply if backend fails
+  function generateReplyLocal(userText, detectedMood){
+    let base = "";
+    if(detectedMood === "caring") base = "Mujhe afsos hai ke aap aise mehsoos kar rahe ho. Main yahan hoon, batao kya hua?";
+    else if(detectedMood === "happy") base = "Ye sun kar khushi hui! Batao, kya accha hua aaj?";
+    else if(detectedMood === "angry") base = "Thoda sa saans lo, mujhe batao kya gussa kar raha hai.";
+    else if(detectedMood === "anxious") base = "Main samajh sakta hoon. Chalo thoda relax karte hain — kuch chhoti exercise karte hain.";
+    else base = "Main yahan hoon. Tum batao, main kaise madad kar sakta hoon?";
+
+    const name = profile.name ? profile.name : null;
+    if(name) base = `${name}, ` + base;
+    return base;
+  }
+
+  // sendMessage flow with natural delay (Pack 1 integrated)
+  async function sendMessage(message){
+    if(!message) return;
+
+    // save user bubble & conversation
+    convo.push({role:"user",text:message}); addBubble("user", `<div class="txt">${escapeHtml(message)}</div>`); saveConvo();
+
+    // update mood immediately
+    updateMood(message);
+    updateSuggestions(humnavaMood);
+
+    // show typing indicator
+    const typingEl = addBubble("bot typing", `<div class="typing-wrap"><div class="typing-dots"><span></span><span></span><span></span></div><div class="typing-text">Humnava is typing...</div></div>`);
+    avatarThinking(); statusEl.textContent = "Thinking...";
+    input.value = ""; input.disabled = true; sendBtn.disabled = true;
+
+    try {
+      const res = await fetch(CHAT_ENDPOINT, {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({message})
+      });
+
+      // when response arrives decide reply (either from server or local)
+      let replyText = "";
+      if(!res.ok){
+        replyText = generateReplyLocal(message, humnavaMood);
+      } else {
+        const data = await res.json();
+        replyText = data.reply || generateReplyLocal(message, humnavaMood);
+      }
+
+      // enhance reply with mood prefix
+      const enhanced = enhanceReply(replyText);
+
+      // compute natural typing delay
+      const delayMs = typingDelay(enhanced);
+      // keep typing bubble visible for that duration to feel natural
+      await new Promise(r => setTimeout(r, delayMs));
+
+      // remove typing bubble and show final reply
+      if(typingEl && typingEl.parentNode) typingEl.remove();
+      convo.push({role:"bot",text:enhanced}); addBubble("bot", `<div class="txt">${escapeHtml(enhanced)}</div>`); saveConvo();
+
+      // speak with mouth animation
+      speakText(enhanced);
+      statusEl.textContent = "Live";
+
+    } catch(e){
+      // network/fetch error: fallback local reply
+      if(typingEl && typingEl.parentNode) typingEl.remove();
+      const fallback = generateReplyLocal(message, humnavaMood);
+      const enhanced = enhanceReply(fallback);
+      convo.push({role:"bot",text:enhanced}); addBubble("bot", `<div class="txt">${escapeHtml(enhanced)}</div>`); saveConvo();
+      speakText(enhanced);
+      statusEl.textContent = "Offline";
+    } finally {
+      input.disabled = false; sendBtn.disabled = false; input.focus();
+    }
+
+    // small memory heuristic (save name if user says "my name is ...")
+    if(message.toLowerCase().includes("my name is")){
+      const nm = message.match(/my name is ([A-Za-z\u0900-\u097F]+)/i);
+      if(nm){
+        memory.push("Name: " + nm[1]);
+        localStorage.setItem(KEY_MEM, JSON.stringify(memory));
+        refreshMemoryPreview();
+      }
+    }
+  }
+
+  // FORM handlers
+  form.addEventListener("submit",(e)=>{ e.preventDefault(); const t = input.value.trim(); if(!t) return; sendMessage(t); });
+  input.addEventListener("keydown",(e)=>{ if(e.key === "Enter" && !e.shiftKey){ e.preventDefault(); form.dispatchEvent(new Event("submit", {cancelable:true})); } });
+
+  // suggestions click
+  suggestionsEl.addEventListener("click",(e)=>{ if(e.target.matches(".chip")) sendMessage(e.target.textContent); });
+
+  // MIC (speech recognition)
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let recognizing=false;
+  if(SpeechRecognition){
+    const rec = new SpeechRecognition();
+    rec.lang = "hi-IN"; rec.interimResults=false; rec.continuous=false;
+    micBtn.addEventListener("click", ()=>{ if(!recognizing){ rec.start(); micBtn.textContent = "🎙️"; recognizing=true; avatarThinking(); } else { rec.stop(); micBtn.textContent = "🎤"; recognizing=false; avatarIdle(); }});
+    rec.onresult = (ev)=>{ const txt = ev.results[0][0].transcript; sendMessage(txt); };
+    rec.onend = ()=>{ micBtn.textContent = "🎤"; recognizing=false; avatarIdle(); };
+  } else { micBtn.style.display = "none"; }
+
+  // SKIN SWITCHER
+  document.querySelectorAll(".skin-btn").forEach(btn=>{ btn.addEventListener("click", ()=> { const s = btn.dataset.skin; if(s) avatarImg.src = s; }); });
+
+  // PROFILE save
+  saveProfile.addEventListener("click", ()=>{ profile.name = profileName.value.trim(); localStorage.setItem(KEY_PROFILE, JSON.stringify(profile)); alert("Profile saved"); });
+
+  // MEMORY clear
+  clearAllMemory.addEventListener("click", ()=>{ if(confirm("Clear all saved memory?")){ memory = []; localStorage.removeItem(KEY_MEM); refreshMemoryPreview(); alert("Cleared"); }});
+
+  // Sidebar open/close
+  openSidebar.addEventListener("click", ()=> sidebar.classList.toggle("open"));
+
+  // Theme buttons
+  document.querySelectorAll('[data-theme]').forEach(b=>{ b.addEventListener("click", ()=> { const t = b.dataset.theme; document.body.classList.remove("light","dark","purple"); document.body.classList.add(t); }); });
+  themeToggle.addEventListener("click", ()=> document.body.classList.toggle("light"));
+
+  // DIARY modal handlers
+  openDiary.addEventListener("click", ()=> { diaryModal.classList.remove("hidden"); renderDiaryList(); });
+  closeDiary.addEventListener("click", ()=> diaryModal.classList.add("hidden"));
+
+  saveDiary.addEventListener("click", ()=> {
+    const txt = diaryText.value.trim(); const md = diaryMood.value;
+    if(!txt){ alert("Write something first"); return; }
+    const item = {text:txt, mood: md, ts: Date.now()};
+    diary.push(item); localStorage.setItem(KEY_DIARY, JSON.stringify(diary));
+    diaryText.value = ""; diaryMood.value = "neutral"; renderDiaryList(); alert("Saved to diary");
+  });
+
+  function renderDiaryList(){
+    diaryList.innerHTML = "";
+    if(diary.length===0){ diaryList.innerHTML = "<div class='small-note'>No diary entries yet.</div>"; return; }
+    [...diary].reverse().forEach(d=>{ const row = document.createElement("div"); row.className = "diary-row"; row.innerHTML = `<div class='d-head'><strong>${escapeHtml(d.mood)}</strong> <small>${new Date(d.ts).toLocaleString()}</small></div><div class='d-body'>${escapeHtml(d.text)}</div>`; diaryList.appendChild(row); });
+  }
+
+  // load existing conversation
+  function loadConvo(){ convo.forEach(c=> addBubble(c.role, `<div class="txt">${escapeHtml(c.text)}</div>`)); }
+  loadConvo();
+
+  // initial greeting
+  if(convo.length === 0){
+    const greeting = profile.name ? `Hi ${profile.name}, I'm Humnava. Tell me how you're feeling today.` : "Hi, I'm Humnava — your companion. Tell me how you're feeling today.";
+    addBubble("bot", `<div class="txt">👋 ${escapeHtml(greeting)}</div>`);
+  }
+
+  refreshMemoryPreview();
+  updateSuggestions("neutral");
+
+  // OPTIONAL: Firebase placeholder for later
+  /*
+  const firebaseConfig = { ... };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+  */
+
+  </script>
+
+</body>
+</html>
